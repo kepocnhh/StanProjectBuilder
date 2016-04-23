@@ -4,9 +4,10 @@ class Const
 {
 private:
 public:
+    static const FXString company_name;
     static const FXString app_name;
+    //
+    static const FXString build_button_name;
 
 protected:
 };
-
-const FXString Const::app_name = "StanProjectBuilder";
