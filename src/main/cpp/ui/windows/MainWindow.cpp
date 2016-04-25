@@ -21,8 +21,14 @@ void MainWindow::create()
 	show(PLACEMENT_SCREEN);
 }
 
+void openFileChooseDialog(FXWindow* owner)
+{
+	new FXFileDialog(owner, "FXFileDialog");
+}
+
 long MainWindow::buildButtonClick(FXObject *, FXSelector, void *)
 {
-	exit(0);
+	//exit(0);
+	openFileChooseDialog(this);
     return 1;
 }

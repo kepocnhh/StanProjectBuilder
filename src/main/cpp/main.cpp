@@ -1,34 +1,24 @@
-#include <sstream>
-#include <string>
-#include <fstream>
 #include "fox-1.6/fx.h"
 #include <windows.h>
 #include "json/json.h"
 #include "Const.h"
+#include "helpers/files/FilesHelper.h"
 #include "ui/windows/MainWindow.h"
 
+void testExecuteCommand()
+{
+  int i;
+  i=system ("del blabla.txt");
+}
 void testJson()
 {
-    std::fstream file("C:/Users/toha/Downloads/test.json");
-	std::stringstream ss;
-	std::string line;
-	while (getline(file, line))
+	std::string line = FilesHelper::getTextFromFile("C:/Users/toha/develop/cpp/StanProjectBuilder/StanProjectBuilder/settings.spb");
+	json::Object jsonData = json::Deserialize(line);
+	//json::Object jsonData = json::Deserialize(FilesHelper::getTextFromFile("C:/Users/toha/develop/cpp/StanProjectBuilder/StanProjectBuilder/settings.spb"));
+	if (jsonData.HasKey("project") && jsonData["project"].GetType() == json::ObjectVal)
 	{
-		ss << line;
-	}
-	file.close();
-	json::Object jsonData = json::Deserialize(ss.str());
-	if (jsonData.HasKey("bool") && jsonData["bool"].GetType() == json::BoolVal)
-	{
-		bool boolObject = jsonData["bool"].ToBool();
-		if(boolObject)
-		{
-			
-		}
-		else
-		{
-			exit(0);
-		}
+		json::Object project = jsonData["project"].ToObject();
+		std::string rootDir = project["rootDir"].ToString();
 	}
 	else
 	{
@@ -39,6 +29,7 @@ void testJson()
 void test()
 {
 	testJson();
+	//testExecuteCommand();
 }
 
 int main(int argc, char *argv[])
