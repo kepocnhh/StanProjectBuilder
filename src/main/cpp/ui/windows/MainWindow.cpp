@@ -23,7 +23,12 @@ void MainWindow::create()
 
 void openFileChooseDialog(FXWindow* owner)
 {
-	new FXFileDialog(owner, "FXFileDialog");
+	//new FXFileDialog(owner, "FXFileDialog");
+    FXString filename = FXFileDialog::getOpenFilename(owner, "Open", "suggestedname.ext", "All Files(*.*)");
+    if(!filename.empty())
+    {
+		FXMessageBox::error(owner, MBOX_OK, "caption", filename.text());
+    }
 }
 
 long MainWindow::buildButtonClick(FXObject *, FXSelector, void *)

@@ -12,7 +12,7 @@ void testExecuteCommand()
 }
 void testJson()
 {
-	std::string line = FilesHelper::getTextFromFile("C:/Users/toha/develop/cpp/StanProjectBuilder/StanProjectBuilder/settings.spb");
+	std::string line = FilesHelper::getTextFromFile("E:/Downloads/settings.spb");
 	json::Object jsonData = json::Deserialize(line);
 	//json::Object jsonData = json::Deserialize(FilesHelper::getTextFromFile("C:/Users/toha/develop/cpp/StanProjectBuilder/StanProjectBuilder/settings.spb"));
 	if (jsonData.HasKey("project") && jsonData["project"].GetType() == json::ObjectVal)
