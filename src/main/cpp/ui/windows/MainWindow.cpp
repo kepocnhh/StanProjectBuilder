@@ -2,7 +2,7 @@
 #include <windows.h>
 #include "../../Const.h"
 #include "../../helpers/files/FilesHelper.h"
-#include "../../res/drawable/Drawable.h"
+//#include "../../res/drawable/Drawable.h"
 #include <iostream>
 #include <fstream>
 
@@ -11,7 +11,8 @@
 
 FXDEFMAP(MainWindow) MainWindowMap[] = {
 	FXMAPFUNC(SEL_COMMAND, MainWindow::ID_BUTTON_OPEN_FILE, MainWindow::openFileButtonClick),
-	FXMAPFUNC(SEL_COMMAND, MainWindow::ID_BUTTON_BUILD, MainWindow::buildButtonClick)
+	FXMAPFUNC(SEL_COMMAND, MainWindow::ID_BUTTON_BUILD, MainWindow::buildButtonClick),
+	FXMAPFUNC(SEL_TIMEOUT, MainWindow::ID_EXECUTE_COMAND, MainWindow::executeCommand)
 };
 FXIMPLEMENT(MainWindow, FXMainWindow, MainWindowMap, ARRAYNUMBER(MainWindowMap))
 
@@ -26,9 +27,14 @@ MainWindow::MainWindow(FXApp *a) : FXMainWindow(a, a->getAppName(), NULL, NULL,
     FXHorizontalFrame* buildFrame = new FXHorizontalFrame(mainSwitcher,DECOR_NONE);
     new FXButton(buildFrame, Const::build_button_name, NULL, this, MainWindow::ID_BUTTON_BUILD);
 
+    /*
     FXBitmap* circle = new FXBitmap(a, NULL);
-    circle->setData(Drawable::circle_progress_bar);
-	FXBitmapFrame* circleProgress = new FXBitmapFrame(mainSwitcher,circle,FRAME_THICK);
+	circle->create();
+    circle->setData(Drawable::test);
+    circle->render();
+	FXBitmapFrame* circleProgress = new FXBitmapFrame(mainSwitcher,circle);
+	*/
+	new FXHorizontalFrame(mainSwitcher,DECOR_NONE);
 }
 
 void MainWindow::create()
@@ -110,6 +116,18 @@ long MainWindow::openFileButtonClick(FXObject* sender, FXSelector, void*)
 	openFileChooseDialog();
     return 1;
 }
+long MainWindow::executeCommand(FXObject *, FXSelector, void *)
+{
+  if (!exeThread->done)
+  {
+    getApp()->addTimeout(this,ID_EXECUTE_COMAND,100);
+  }
+  else
+  {
+	mainSwitcher->handle(this,FXSEL(SEL_COMMAND,FXSwitcher::ID_OPEN_SECOND),NULL);
+  }
+	return 1;
+}
 long MainWindow::buildButtonClick(FXObject *, FXSelector, void *)
 {
 	std::string line = FilesHelper::getTextFromFile(settingsFileName.c_str());
@@ -136,59 +154,13 @@ long MainWindow::buildButtonClick(FXObject *, FXSelector, void *)
 		showErrorMessageDialog(this, json::Deserialize(Project::error_incorrect_file)["error"].ToObject());
 		return 1;
 	}
+	mainSwitcher->handle(this,FXSEL(SEL_COMMAND,FXSwitcher::ID_OPEN_THIRD),NULL);
+    exeThread = new ExeThread();
 	std::string engage;
 	engage = ProjectBuilder::buildProject(project);
-	//if(engage.size() == 0)
-	//{
-		//engage = ProjectBuilder::buildProject(project);
-		//engage = "/c \"" + engage + "\"";
-	//}
-	//engage += " >> test.txt";
-
 	engage += " 2>&1";
-	std::ofstream myfile;
-	myfile.open ("test.txt");
-  FILE *fp;
-  //FILE *outputfile;
-  char var[1024];
-
-	fp = popen(engage.c_str(), "r");
-	while (fgets(var, sizeof(var), fp) != NULL) 
-	{
-		//printf("%s", var);
-		myfile << var;
-	}
-	pclose(fp);
-
-  //outputfile = fopen("test.txt", "a");
-  //fprintf(outputfile,"%s\n",var);
-  //fclose(outputfile);
-	myfile.close();
-
-	/*
-	FILE *fp = popen(engage.c_str(), "r");
-	char buf[1024];
-	std::string inputLine = "";
-	while (fgets(buf, 1024, fp))
-	{
-		inputLine += buf;
-	}
-	fclose(fp);
-	*/
-
-	//FXMessageBox::error(this, MBOX_OK, "caption", inputLine.c_str());
-	//engage = "/c \"" + engage + "\"";
-	//ShellExecute(NULL, "open", "cmd.exe", engage.c_str(), NULL, SW_HIDE);
-	
-	//system(engage.c_str());
-	
-	/*
-	std::ofstream myfile;
-	myfile.open ("test.txt");
-	myfile << inputLine;
-	myfile.close();
-	*/
-
-	//FXMessageBox::error(this, MBOX_OK, "Build", engage.c_str());
+    exeThread->engage = engage;
+    exeThread->start();
+    getApp()->addTimeout(this,ID_EXECUTE_COMAND,100);
     return 1;
 }
