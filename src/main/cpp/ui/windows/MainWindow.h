@@ -11,8 +11,9 @@ private:
 	//FXHorizontalFrame *openFileFrame;
 	//FXHorizontalFrame *buildFrame;
 	Project* project;
-	std::string engage;
+	std::string settingsFileName;
 	void openFileChooseDialog();
+	bool checkJsonData(json::Object);
 	void switchToBuild(json::Object, json::Object);
 
 public:

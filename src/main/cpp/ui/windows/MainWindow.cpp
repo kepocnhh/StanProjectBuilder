@@ -1,9 +1,9 @@
 #include "MainWindow.h"
-//#include <windows.h>
+#include <windows.h>
 #include "../../Const.h"
 #include "../../helpers/files/FilesHelper.h"
-//#include <iostream>
-//#include <fstream>
+#include <iostream>
+#include <fstream>
 
 #define WINDOW_WIDTH 100
 #define WINDOW_HEIGHT 100
@@ -17,7 +17,6 @@ FXIMPLEMENT(MainWindow, FXMainWindow, MainWindowMap, ARRAYNUMBER(MainWindowMap))
 MainWindow::MainWindow(FXApp *a) : FXMainWindow(a, a->getAppName(), NULL, NULL,
             DECOR_NONE | DECOR_TITLE, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT)
 {
-	engage = "";
 	mainSwitcher = new FXSwitcher(this,LAYOUT_FILL_X|LAYOUT_FILL_Y);
 
 	FXHorizontalFrame* openFileFrame = new FXHorizontalFrame(mainSwitcher,DECOR_NONE);
@@ -64,7 +63,8 @@ void MainWindow::openFileChooseDialog()
 		showErrorMessageDialog(this, jsonDataErrorOpenfile["error"].ToObject());
 		return;
     }
-	std::string line = FilesHelper::getTextFromFile(filename.text());
+    settingsFileName = filename.text();
+	std::string line = FilesHelper::getTextFromFile(settingsFileName.c_str());
 	json::Object jsonData;
 	try
 	{
@@ -75,18 +75,29 @@ void MainWindow::openFileChooseDialog()
 		showErrorMessageDialog(this, json::Deserialize(Project::error_incorrect_file)["error"].ToObject());
 		return;
 	}
+	if(checkJsonData(jsonData))
+	{
+		switchToBuild(jsonData["project"].ToObject(), jsonData["build"].ToObject());
+	}
+}
+bool MainWindow::checkJsonData(json::Object jsonData)
+{
 	if(jsonData.HasKey("error"))
 	{
 		showErrorMessageDialog(this, jsonData["error"].ToObject());
-		return;
+		return false;
 	}
 	else if(!jsonData.HasKey("project") || jsonData["project"].GetType() != json::ObjectVal)
 	{
-		json::Object jsonDataErrorIncorrectFile = json::Deserialize(Project::error_incorrect_file);
-		showErrorMessageDialog(this, jsonDataErrorIncorrectFile["error"].ToObject());
-		return;
+		showErrorMessageDialog(this, json::Deserialize(Project::error_incorrect_file)["error"].ToObject());
+		return false;
 	}
-	switchToBuild(jsonData["project"].ToObject(), jsonData["build"].ToObject());
+	else if(!jsonData.HasKey("build") || jsonData["build"].GetType() != json::ObjectVal)
+	{
+		showErrorMessageDialog(this, json::Deserialize(Project::error_incorrect_file)["error"].ToObject());
+		return false;
+	}
+	return true;
 }
 
 long MainWindow::openFileButtonClick(FXObject* sender, FXSelector, void*)
@@ -96,20 +107,83 @@ long MainWindow::openFileButtonClick(FXObject* sender, FXSelector, void*)
 }
 long MainWindow::buildButtonClick(FXObject *, FXSelector, void *)
 {
-	if(engage.size() == 0)
+	std::string line = FilesHelper::getTextFromFile(settingsFileName.c_str());
+	json::Object jsonData;
+	try
 	{
-		engage = ProjectBuilder::buildProject(project);
-		//engage = "/c \"" + engage + "\"";
+		jsonData = json::Deserialize(line);
 	}
-	//ShellExecute(NULL, "open", "C:\\WINDOWS\\system32\\cmd.exe", engage.c_str(), NULL, SW_SHOW);
-	int i;
-	i=system(engage.c_str());
+	catch (const std::runtime_error& e)
+	{
+		showErrorMessageDialog(this, json::Deserialize(Project::error_incorrect_file)["error"].ToObject());
+		return 1;
+	}
+	if(!checkJsonData(jsonData))
+	{
+		return 1;
+	}
+	try
+	{
+		project = ProjectBuilder::getProjectFromJson(jsonData["project"].ToObject(), jsonData["build"].ToObject());
+	}
+	catch (const std::runtime_error& e)
+	{
+		showErrorMessageDialog(this, json::Deserialize(Project::error_incorrect_file)["error"].ToObject());
+		return 1;
+	}
+	std::string engage;
+	engage = ProjectBuilder::buildProject(project);
+	//if(engage.size() == 0)
+	//{
+		//engage = ProjectBuilder::buildProject(project);
+		//engage = "/c \"" + engage + "\"";
+	//}
+	//engage += " >> test.txt";
+
+	engage += " 2>&1";
+	std::ofstream myfile;
+	myfile.open ("test.txt");
+  FILE *fp;
+  //FILE *outputfile;
+  char var[1024];
+
+	fp = popen(engage.c_str(), "r");
+	while (fgets(var, sizeof(var), fp) != NULL) 
+	{
+		//printf("%s", var);
+		myfile << var;
+	}
+	pclose(fp);
+
+  //outputfile = fopen("test.txt", "a");
+  //fprintf(outputfile,"%s\n",var);
+  //fclose(outputfile);
+	myfile.close();
+
+	/*
+	FILE *fp = popen(engage.c_str(), "r");
+	char buf[1024];
+	std::string inputLine = "";
+	while (fgets(buf, 1024, fp))
+	{
+		inputLine += buf;
+	}
+	fclose(fp);
+	*/
+
+	//FXMessageBox::error(this, MBOX_OK, "caption", inputLine.c_str());
+	//engage = "/c \"" + engage + "\"";
+	//ShellExecute(NULL, "open", "cmd.exe", engage.c_str(), NULL, SW_HIDE);
+	
+	//system(engage.c_str());
+	
 	/*
 	std::ofstream myfile;
 	myfile.open ("test.txt");
-	myfile << engage;
+	myfile << inputLine;
 	myfile.close();
 	*/
+
 	//FXMessageBox::error(this, MBOX_OK, "Build", engage.c_str());
     return 1;
 }
