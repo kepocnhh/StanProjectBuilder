@@ -28,7 +28,10 @@ void testJson()
 
 void test()
 {
-	testJson();
+	//ShellExecute(NULL, "open", "C:\\WINDOWS\\system32\\cmd.exe","/c \"start C:\\Users\\toha\\Downloads\\StanProjectBuilder\\test.txt\"", NULL, SW_SHOW );
+    //ShellExecute(0, "open", "cmd.exe", "start C:/Users/toha/Downloads/StanProjectBuilder/test.txt", 0, SW_HIDE);
+	//WinExec("C:/Users/toha/Downloads/StanProjectBuilder/test.txt",SW_SHOW);
+	//testJson();
 	//testExecuteCommand();
 }
 
@@ -43,5 +46,6 @@ int main(int argc, char *argv[])
                  0, 0, 0, 0,
                  SWP_NOMOVE | SWP_NOSIZE);
 	test();
+	//FXMessageBox::error(main, MBOX_OK, "caption", "message");
     return application.run();
 }
