@@ -2,6 +2,7 @@
 #include <windows.h>
 #include "../../Const.h"
 #include "../../helpers/files/FilesHelper.h"
+#include "../../res/drawable/Drawable.h"
 #include <iostream>
 #include <fstream>
 
@@ -24,6 +25,10 @@ MainWindow::MainWindow(FXApp *a) : FXMainWindow(a, a->getAppName(), NULL, NULL,
 
     FXHorizontalFrame* buildFrame = new FXHorizontalFrame(mainSwitcher,DECOR_NONE);
     new FXButton(buildFrame, Const::build_button_name, NULL, this, MainWindow::ID_BUTTON_BUILD);
+
+    FXBitmap* circle = new FXBitmap(a, NULL);
+    circle->setData(Drawable::circle_progress_bar);
+	FXBitmapFrame* circleProgress = new FXBitmapFrame(mainSwitcher,circle,FRAME_THICK);
 }
 
 void MainWindow::create()
