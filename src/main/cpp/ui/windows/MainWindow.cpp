@@ -1,5 +1,4 @@
 #include "MainWindow.h"
-#include <windows.h>
 #include "../../Const.h"
 #include "../../helpers/files/FilesHelper.h"
 //#include "../../res/drawable/Drawable.h"
@@ -12,6 +11,7 @@
 FXDEFMAP(MainWindow) MainWindowMap[] = {
 	FXMAPFUNC(SEL_COMMAND, MainWindow::ID_BUTTON_OPEN_FILE, MainWindow::openFileButtonClick),
 	FXMAPFUNC(SEL_COMMAND, MainWindow::ID_BUTTON_BUILD, MainWindow::buildButtonClick),
+	FXMAPFUNC(SEL_COMMAND, MainWindow::ID_BUTTON_RUN, MainWindow::runButtonClick),
 	FXMAPFUNC(SEL_TIMEOUT, MainWindow::ID_EXECUTE_COMAND, MainWindow::executeCommand)
 };
 FXIMPLEMENT(MainWindow, FXMainWindow, MainWindowMap, ARRAYNUMBER(MainWindowMap))
@@ -26,6 +26,7 @@ MainWindow::MainWindow(FXApp *a) : FXMainWindow(a, a->getAppName(), NULL, NULL,
 
     FXHorizontalFrame* buildFrame = new FXHorizontalFrame(mainSwitcher,DECOR_NONE);
     new FXButton(buildFrame, Const::build_button_name, NULL, this, MainWindow::ID_BUTTON_BUILD);
+    new FXButton(buildFrame, Const::run_button_name, NULL, this, MainWindow::ID_BUTTON_RUN);
 
     /*
     FXBitmap* circle = new FXBitmap(a, NULL);
@@ -50,11 +51,11 @@ void showErrorMessageDialog(FXMainWindow* mainWindow, json::Object error)
 	FXMessageBox::error(mainWindow, MBOX_OK, type.c_str(), message.c_str());
 }
 
-void MainWindow::switchToBuild(json::Object projectJson, json::Object buildJson)
+void MainWindow::switchToBuild(json::Object projectJson, json::Object buildJson, json::Object runJson)
 {
 	try
 	{
-		project = ProjectBuilder::getProjectFromJson(projectJson, buildJson);
+		project = ProjectBuilder::getProjectFromJson(projectJson, buildJson, runJson);
 	}
 	catch (const std::runtime_error& e)
 	{
@@ -88,7 +89,10 @@ void MainWindow::openFileChooseDialog()
 	}
 	if(checkJsonData(jsonData))
 	{
-		switchToBuild(jsonData["project"].ToObject(), jsonData["build"].ToObject());
+		switchToBuild(
+			jsonData["project"].ToObject(),
+			jsonData["build"].ToObject(),
+			jsonData["run"].ToObject());
 	}
 }
 bool MainWindow::checkJsonData(json::Object jsonData)
@@ -108,6 +112,11 @@ bool MainWindow::checkJsonData(json::Object jsonData)
 		showErrorMessageDialog(this, json::Deserialize(Project::error_incorrect_file)["error"].ToObject());
 		return false;
 	}
+	else if(!jsonData.HasKey("run") || jsonData["run"].GetType() != json::ObjectVal)
+	{
+		showErrorMessageDialog(this, json::Deserialize(Project::error_incorrect_file)["error"].ToObject());
+		return false;
+	}
 	return true;
 }
 
@@ -118,15 +127,56 @@ long MainWindow::openFileButtonClick(FXObject* sender, FXSelector, void*)
 }
 long MainWindow::executeCommand(FXObject *, FXSelector, void *)
 {
-  if (!exeThread->done)
-  {
-    getApp()->addTimeout(this,ID_EXECUTE_COMAND,100);
-  }
-  else
-  {
-	mainSwitcher->handle(this,FXSEL(SEL_COMMAND,FXSwitcher::ID_OPEN_SECOND),NULL);
-  }
+	if(!exeThread->done)
+	{
+		getApp()->addTimeout(this,ID_EXECUTE_COMAND,100);
+	}
+	else
+	{
+		mainSwitcher->handle(this,FXSEL(SEL_COMMAND,FXSwitcher::ID_OPEN_SECOND),NULL);
+	}
 	return 1;
+}
+long MainWindow::runButtonClick(FXObject *, FXSelector, void *)
+{
+	std::string line = FilesHelper::getTextFromFile(settingsFileName.c_str());
+	json::Object jsonData;
+	try
+	{
+		jsonData = json::Deserialize(line);
+	}
+	catch (const std::runtime_error& e)
+	{
+		showErrorMessageDialog(this, json::Deserialize(Project::error_incorrect_file)["error"].ToObject());
+		return 1;
+	}
+	if(!checkJsonData(jsonData))
+	{
+		return 1;
+	}
+	try
+	{
+		project = ProjectBuilder::getProjectFromJson(
+			jsonData["project"].ToObject(),
+			jsonData["build"].ToObject(),
+			jsonData["run"].ToObject());
+	}
+	catch (const std::runtime_error& e)
+	{
+		showErrorMessageDialog(this, json::Deserialize(Project::error_incorrect_file)["error"].ToObject());
+		return 1;
+	}
+
+	TerminateProcess(pi.hProcess, 0);
+	std::string engage;
+	engage = ProjectBuilder::runProject(project);
+	STARTUPINFO si;
+	memset((void *)&si,0,sizeof(STARTUPINFO));
+	si.cb = sizeof(STARTUPINFO);
+	memset((void *)&pi,0,sizeof(PROCESS_INFORMATION));
+	CreateProcess(NULL, const_cast<LPSTR>(engage.c_str()), NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi);
+
+    return 1;
 }
 long MainWindow::buildButtonClick(FXObject *, FXSelector, void *)
 {
@@ -147,7 +197,10 @@ long MainWindow::buildButtonClick(FXObject *, FXSelector, void *)
 	}
 	try
 	{
-		project = ProjectBuilder::getProjectFromJson(jsonData["project"].ToObject(), jsonData["build"].ToObject());
+		project = ProjectBuilder::getProjectFromJson(
+			jsonData["project"].ToObject(),
+			jsonData["build"].ToObject(),
+			jsonData["run"].ToObject());
 	}
 	catch (const std::runtime_error& e)
 	{

@@ -5,8 +5,11 @@
 class ExeThread: public FXThread
 {
   public:
+	std::ofstream myfile;
+	FILE *fp;
 	std::string engage;
     bool done;
     ExeThread();
+	void closeStreams();
     virtual FXint run();
 };

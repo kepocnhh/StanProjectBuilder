@@ -1,12 +1,24 @@
 #include "ProjectBuilder.h"
+#include <stdio.h>
+#include <fstream>
 
-Project* ProjectBuilder::getProjectFromJson(json::Object projectJson, json::Object buildJson)
+Project* ProjectBuilder::getProjectFromJson(json::Object projectJson,
+	json::Object buildJson,
+	json::Object runJson)
 {
 	Project* project = ProjectBuilder::getProjectFromJson(projectJson);
 	project->build = ProjectBuilder::getBuildFromJson(buildJson);
+	project->run = ProjectBuilder::getRunFromJson(runJson);
 	return project;
 }
 
+std::string ProjectBuilder::runProject(Project* project)
+{
+	std::string engage = project->run->pre;
+	engage += project->projectSettings.rootDir + "/" + project->projectSettings.name;
+	engage += project->run->post;
+	return engage;
+}
 std::string ProjectBuilder::buildProject(Project* project)
 {
 	std::string engage = project->build->mainline.compile;
@@ -28,7 +40,7 @@ std::string ProjectBuilder::buildProject(Project* project)
 		}
 	}
 	//EXECUTE_FILE_NAME
-	engage += " -o " + project->projectSettings.name;
+	engage += " -o " + project->projectSettings.rootDir + "/" + project->projectSettings.name;
 	//FLAGS
 	for(int i=0; i < project->build->mainline.flagsSize; i++)
 	{
@@ -49,6 +61,13 @@ Project* ProjectBuilder::getProjectFromJson(json::Object projectJson)
 	project->projectSettings.rootDir = projectJson["rootDir"].ToString();
 	project->projectSettings.type = projectJson["type"].ToString();
 	return project;
+}
+Run* ProjectBuilder::getRunFromJson(json::Object runJson)
+{
+	Run* run = new Run();
+	run->pre = runJson["pre"].ToString();
+	run->post = runJson["post"].ToString();
+	return run;
 }
 Build* ProjectBuilder::getBuildFromJson(json::Object buildJson)
 {

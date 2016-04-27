@@ -1,5 +1,6 @@
 #include <string>
 #include "Build.h"
+#include "Run.h"
 
 class Project
 {
@@ -14,6 +15,7 @@ public:
 	}
 	projectSettings;
 	Build* build;
+	Run* run;
 	//
     static const std::string error_incorrect_file;
 
