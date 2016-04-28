@@ -1,133 +1,15 @@
 #include "ProjectBuilder.h"
-#include <stdio.h>
-#include <fstream>
 
 Project* ProjectBuilder::getProjectFromJson(json::Object projectJson,
-	json::Object buildJson,
-	json::Object runJson)
+	json::Array runCommands)
 {
 	Project* project = ProjectBuilder::getProjectFromJson(projectJson);
-	project->build = ProjectBuilder::getBuildFromJson(buildJson);
-	project->run = ProjectBuilder::getRunFromJson(runJson);
+	project->runCommands = ProjectBuilder::getCommandsFromJson(runCommands);
 	return project;
 }
 
-std::string ProjectBuilder::runProject(Project* project)
-{
-	std::string engage = project->run->pre;
-	engage += project->projectSettings.rootDir + "/" + project->projectSettings.name;
-	engage += project->run->post;
-	return engage;
-}
-std::string ProjectBuilder::buildProject(Project* project)
-{
-	std::string engage = project->build->mainline.compile;
-	//MODULES
-	for(int i=0; i < project->build->mainline.modulesSize; i++)
-	{
-		if(!project->build->mainline.modules[i].active)
-		{
-			continue;
-		}
-		std::string prefix = "";
-		if(!project->build->mainline.modules[i].absolute)
-		{
-			prefix = project->projectSettings.rootDir + "/";
-		}
-		for(int j=0; j < project->build->mainline.modules[i].linesSize; j++)
-		{
-			engage += " " + prefix + project->build->mainline.modules[i].lines[j];
-		}
-	}
-	//EXECUTE_FILE_NAME
-	engage += " -o " + project->projectSettings.rootDir + "/" + project->projectSettings.name;
-	//FLAGS
-	for(int i=0; i < project->build->mainline.flagsSize; i++)
-	{
-		engage += " " + project->build->mainline.flags[i];
-	}
-	//LIBS
-	for(int i=0; i < project->build->mainline.libsSize; i++)
-	{
-		engage += " " + project->build->mainline.libs[i];
-	}
-	return engage;
-}
-
-Project* ProjectBuilder::getProjectFromJson(json::Object projectJson)
-{
-	Project* project = new Project();
-	project->projectSettings.name = projectJson["name"].ToString();
-	project->projectSettings.rootDir = projectJson["rootDir"].ToString();
-	project->projectSettings.type = projectJson["type"].ToString();
-	return project;
-}
-Run* ProjectBuilder::getRunFromJson(json::Object runJson)
-{
-	Run* run = new Run();
-	run->pre = runJson["pre"].ToString();
-	run->post = runJson["post"].ToString();
-	return run;
-}
-Build* ProjectBuilder::getBuildFromJson(json::Object buildJson)
-{
-	Build* build = new Build();
-	//
-	json::Array pre = buildJson["pre"].ToArray();
-	build->preSize = pre.size();
-	build->pre = new std::string[pre.size()];
-	for(int i = 0; i < pre.size(); i++)
-	{
-		build->pre[i] = pre[i].ToString();
-	}
-	//
-	json::Object mainlineJson = buildJson["mainline"].ToObject();
-	ProjectBuilder::getMainlineFromJson(build, mainlineJson);
-	//
-	json::Array post = buildJson["post"].ToArray();
-	build->postSize = post.size();
-	build->post = new std::string[post.size()];
-	for(int i = 0; i < post.size(); i++)
-	{
-		build->post[i] = post[i].ToString();
-	}
-	return build;
-}
-Build* ProjectBuilder::getMainlineFromJson(Build* build, json::Object mainlineJson)
-{
-	build->mainline.compile = mainlineJson["compile"].ToString();
-	//
-	json::Array flags = mainlineJson["flags"].ToArray();
-	build->mainline.flagsSize = flags.size();
-	build->mainline.flags = new std::string[flags.size()];
-	for(int i = 0; i < flags.size(); i++)
-	{
-		build->mainline.flags[i] = flags[i].ToString();
-	}
-	//
-	json::Array modulesJson = mainlineJson["modules"].ToArray();
-	build->mainline.modulesSize = modulesJson.size();
-	build->mainline.modules = ProjectBuilder::getModulesFromJson(modulesJson);
-	//
-	json::Array libs = mainlineJson["libs"].ToArray();
-	build->mainline.libsSize = libs.size();
-	build->mainline.libs = new std::string[libs.size()];
-	for(int i = 0; i < libs.size(); i++)
-	{
-		build->mainline.libs[i] = libs[i].ToString();
-	}
-	return build;
-}
-Module* ProjectBuilder::getModulesFromJson(json::Array modulesJson)
-{
-	Module* modules = new Module[modulesJson.size()];
-	for(int i = 0; i < modulesJson.size(); i++)
-	{
-		modules[i] = ProjectBuilder::getModuleFromJson(modulesJson[i]);
-	}
-	return modules;
-}
-Module ProjectBuilder::getModuleFromJson(json::Object moduleJson)
+//______________________PARSE_JSON
+Module getModuleFromJson(json::Object moduleJson)
 {
 	Module module = Module();
 	module.name = moduleJson["name"].ToString();
@@ -141,4 +23,134 @@ Module ProjectBuilder::getModuleFromJson(json::Object moduleJson)
 		module.lines[i] = lines[i].ToString();
 	}
 	return module;
+}
+Module* getModulesFromJson(json::Array modulesJson)
+{
+	Module* modules = new Module[modulesJson.size()];
+	for(int i = 0; i < modulesJson.size(); i++)
+	{
+		modules[i] = getModuleFromJson(modulesJson[i]);
+	}
+	return modules;
+}
+Command getCommandModuleFromJson(json::Object runCommandJson)
+{
+	CommandModule command = CommandModule(runCommandJson["name"].ToString(),
+		runCommandJson["type"].ToInt());
+	//
+	json::Array pre = runCommandJson["pre"].ToArray();
+	command.preSize = pre.size();
+	command.pre = new std::string[pre.size()];
+	for(int i = 0; i < pre.size(); i++)
+	{
+		command.pre[i] = pre[i].ToString();
+	}
+	//
+	json::Array modulesJson = runCommandJson["modules"].ToArray();
+	command.modulesSize = modulesJson.size();
+	command.modules = getModulesFromJson(modulesJson);
+	//
+	json::Array post = runCommandJson["post"].ToArray();
+	command.postSize = post.size();
+	command.post = new std::string[post.size()];
+	for(int i = 0; i < post.size(); i++)
+	{
+		command.post[i] = post[i].ToString();
+	}
+	//
+	return command;
+}
+Command getCommandGroupFromJson(json::Object runCommandJson)
+{
+	CommandGroup command = CommandGroup(runCommandJson["name"].ToString(),
+		runCommandJson["type"].ToInt());
+	json::Array commands = runCommandJson["commands"].ToArray();
+	command.commandsSize = commands.size();
+	return command;
+}
+Command getCommandFromJson(json::Object runCommandJson)
+{
+	if(runCommandJson["type"].ToInt() == TypesHelper::COMMAND_TYPE_GROUP)
+	{
+		return getCommandGroupFromJson(runCommandJson);
+	}
+	else
+	{
+		return getCommandModuleFromJson(runCommandJson);
+	}
+}
+Project* ProjectBuilder::getProjectFromJson(json::Object projectJson)
+{
+	Project* project = new Project();
+	project->projectSettings.name = projectJson["name"].ToString();
+	project->projectSettings.rootDir = projectJson["rootDir"].ToString();
+	project->projectSettings.type = projectJson["type"].ToInt();
+	return project;
+}
+Command* ProjectBuilder::getCommandsFromJson(json::Array runCommandsJson)
+{
+	Command* runCommands = new Command[runCommandsJson.size()];
+	for(int i = 0; i < runCommandsJson.size(); i++)
+	{
+		runCommands[i] = getCommandFromJson(runCommandsJson[i]);
+	}
+	return runCommands;
+}
+
+//______________________BUILD_COMMANDS
+std::string buildCommandModule(CommandModule* command, Project::settings projectSettings)
+{
+	std::string engage = "";
+	//MODULES
+	for(int i=0; i < command->modulesSize; i++)
+	{
+		if(!command->modules[i].active)
+		{
+			continue;
+		}
+		std::string prefix = "";
+		if(!command->modules[i].absolute)
+		{
+			prefix = projectSettings.rootDir + "/";
+		}
+		for(int j=0; j < command->modules[i].linesSize; j++)
+		{
+			engage += " " + prefix + command->modules[i].lines[j];
+		}
+	}
+	//EXECUTE_FILE_NAME
+	if(projectSettings.type == TypesHelper::PROJECT_TYPE_CPP)
+	{
+		engage += " -o " + projectSettings.rootDir + "/" + projectSettings.name;
+	}
+	return engage;
+}
+std::string buildCommandCommandGroup(CommandGroup* command, Project::settings projectSettings)
+{
+	std::string engage = "";
+	/*
+	for(int i = 0; i < command->commandsSize; i++)
+	{
+		if(command->commands[i].type == TypesHelper::COMMAND_TYPE_GROUP)
+		{
+			engage += buildCommandCommandGroup((CommandModule)command->commands[i]) + "\n";
+		}
+		else
+		{
+			engage += buildCommandModule((CommandGroup)command->commands[i]) + "\n";
+		}
+	}
+	*/
+	return engage;
+}
+std::string ProjectBuilder::buildCommand(Command* command, Project::settings projectSettings)
+{
+	if(command->type == TypesHelper::COMMAND_TYPE_GROUP)
+	{
+		return buildCommandCommandGroup(((CommandGroup *)command), projectSettings);
+	}
+	else
+	{
+		return buildCommandModule(((CommandModule *)command), projectSettings);
+	}
 }

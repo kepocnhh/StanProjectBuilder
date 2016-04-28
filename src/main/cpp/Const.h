@@ -1,3 +1,6 @@
+#ifndef _Const_H
+#define _Const_H
+
 #include "fox-1.6/fx.h"
 
 class Const
@@ -13,3 +16,5 @@ public:
 
 protected:
 };
+
+#endif // _Const_H

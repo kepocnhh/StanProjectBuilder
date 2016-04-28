@@ -1,6 +1,5 @@
 #include <string>
-#include "Build.h"
-#include "Run.h"
+#include "command/Command.h"
 
 class Project
 {
@@ -11,13 +10,13 @@ public:
 	{
 		std::string name;
 		std::string rootDir;
-		std::string type;
+		int type;
 	}
 	projectSettings;
-	Build* build;
-	Run* run;
+	Command* runCommands;
 	//
     static const std::string error_incorrect_file;
+    static const std::string error_deserialize_file;
 
 protected:
 };

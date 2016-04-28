@@ -1,9 +1,4 @@
 #include "MainWindow.h"
-#include "../../Const.h"
-#include "../../helpers/files/FilesHelper.h"
-//#include "../../res/drawable/Drawable.h"
-#include <iostream>
-#include <fstream>
 
 #define WINDOW_WIDTH 100
 #define WINDOW_HEIGHT 100
@@ -24,9 +19,9 @@ MainWindow::MainWindow(FXApp *a) : FXMainWindow(a, a->getAppName(), NULL, NULL,
 	FXHorizontalFrame* openFileFrame = new FXHorizontalFrame(mainSwitcher,DECOR_NONE);
     new FXButton(openFileFrame, Const::open_file_button_name, NULL, this, MainWindow::ID_BUTTON_OPEN_FILE);
 
-    FXHorizontalFrame* buildFrame = new FXHorizontalFrame(mainSwitcher,DECOR_NONE);
-    new FXButton(buildFrame, Const::build_button_name, NULL, this, MainWindow::ID_BUTTON_BUILD);
-    new FXButton(buildFrame, Const::run_button_name, NULL, this, MainWindow::ID_BUTTON_RUN);
+    FXHorizontalFrame* commandsFrame = new FXHorizontalFrame(mainSwitcher,DECOR_NONE);
+    new FXButton(commandsFrame, Const::build_button_name, NULL, this, MainWindow::ID_BUTTON_BUILD);
+    //new FXButton(commandsFrame, Const::run_button_name, NULL, this, MainWindow::ID_BUTTON_RUN);
 
     /*
     FXBitmap* circle = new FXBitmap(a, NULL);
@@ -51,11 +46,11 @@ void showErrorMessageDialog(FXMainWindow* mainWindow, json::Object error)
 	FXMessageBox::error(mainWindow, MBOX_OK, type.c_str(), message.c_str());
 }
 
-void MainWindow::switchToBuild(json::Object projectJson, json::Object buildJson, json::Object runJson)
+void MainWindow::switchToBuild(json::Object projectJson, json::Array runCommands)
 {
 	try
 	{
-		project = ProjectBuilder::getProjectFromJson(projectJson, buildJson, runJson);
+		project = ProjectBuilder::getProjectFromJson(projectJson, runCommands);
 	}
 	catch (const std::runtime_error& e)
 	{
@@ -65,6 +60,56 @@ void MainWindow::switchToBuild(json::Object projectJson, json::Object buildJson,
 	//
 	FXSelector updatemessage=FXSEL(SEL_COMMAND,FXSwitcher::ID_OPEN_SECOND);
 	mainSwitcher->handle(this,updatemessage,NULL);
+}
+std::string getModulesString(CommandModule* command, Project::settings projectSettings)
+{
+	std::string engage = "";
+	if(command->modulesSize == 8)
+	{
+		engage += "8";
+	}
+	else if(command->modulesSize > 8)
+	{
+		engage += ">8";
+	}
+	else if(command->modulesSize < 8)
+	{
+		engage += "<8";
+	}
+		engage += command->name;
+	if(command->modules[0].active)
+	{
+		engage += "active";
+	}
+	else
+	{
+		engage += "!!!active";
+	}
+	//MODULES
+	for(int i=0; i < command->modulesSize; i++)
+	{
+		/*
+		if(!command->modules[i].active)
+		{
+			continue;
+		}
+		std::string prefix = "";
+		if(!command->modules[i].absolute)
+		{
+			prefix = projectSettings.rootDir + "/";
+		}
+		for(int j=0; j < command->modules[i].linesSize; j++)
+		{
+			engage += " " + prefix + command->modules[i].lines[j];
+		}
+		*/
+	}
+	//EXECUTE_FILE_NAME
+	if(projectSettings.type == TypesHelper::PROJECT_TYPE_CPP)
+	{
+		engage += " -o " + projectSettings.rootDir + "/" + projectSettings.name;
+	}
+	return engage;
 }
 void MainWindow::openFileChooseDialog()
 {
@@ -84,16 +129,17 @@ void MainWindow::openFileChooseDialog()
 	}
 	catch (const std::runtime_error& e)
 	{
-		showErrorMessageDialog(this, json::Deserialize(Project::error_incorrect_file)["error"].ToObject());
+		showErrorMessageDialog(this, json::Deserialize(Project::error_deserialize_file)["error"].ToObject());
 		return;
 	}
 	if(checkJsonData(jsonData))
 	{
 		switchToBuild(
 			jsonData["project"].ToObject(),
-			jsonData["build"].ToObject(),
-			jsonData["run"].ToObject());
+			jsonData["runCommands"].ToArray());
 	}
+	//
+	FXMessageBox::error(this, MBOX_OK, "modules", getModulesString(((CommandModule *)&project->runCommands[0]), project->projectSettings).c_str());
 }
 bool MainWindow::checkJsonData(json::Object jsonData)
 {
@@ -107,12 +153,7 @@ bool MainWindow::checkJsonData(json::Object jsonData)
 		showErrorMessageDialog(this, json::Deserialize(Project::error_incorrect_file)["error"].ToObject());
 		return false;
 	}
-	else if(!jsonData.HasKey("build") || jsonData["build"].GetType() != json::ObjectVal)
-	{
-		showErrorMessageDialog(this, json::Deserialize(Project::error_incorrect_file)["error"].ToObject());
-		return false;
-	}
-	else if(!jsonData.HasKey("run") || jsonData["run"].GetType() != json::ObjectVal)
+	else if(!jsonData.HasKey("runCommands") || jsonData["runCommands"].GetType() != json::ArrayVal)
 	{
 		showErrorMessageDialog(this, json::Deserialize(Project::error_incorrect_file)["error"].ToObject());
 		return false;
@@ -158,15 +199,14 @@ long MainWindow::runButtonClick(FXObject *, FXSelector, void *)
 	{
 		project = ProjectBuilder::getProjectFromJson(
 			jsonData["project"].ToObject(),
-			jsonData["build"].ToObject(),
-			jsonData["run"].ToObject());
+			jsonData["runCommands"].ToArray());
 	}
 	catch (const std::runtime_error& e)
 	{
 		showErrorMessageDialog(this, json::Deserialize(Project::error_incorrect_file)["error"].ToObject());
 		return 1;
 	}
-
+	/*
 	TerminateProcess(pi.hProcess, 0);
 	std::string engage;
 	engage = ProjectBuilder::runProject(project);
@@ -175,7 +215,7 @@ long MainWindow::runButtonClick(FXObject *, FXSelector, void *)
 	si.cb = sizeof(STARTUPINFO);
 	memset((void *)&pi,0,sizeof(PROCESS_INFORMATION));
 	CreateProcess(NULL, const_cast<LPSTR>(engage.c_str()), NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi);
-
+	*/
     return 1;
 }
 long MainWindow::buildButtonClick(FXObject *, FXSelector, void *)
@@ -188,7 +228,7 @@ long MainWindow::buildButtonClick(FXObject *, FXSelector, void *)
 	}
 	catch (const std::runtime_error& e)
 	{
-		showErrorMessageDialog(this, json::Deserialize(Project::error_incorrect_file)["error"].ToObject());
+		showErrorMessageDialog(this, json::Deserialize(Project::error_deserialize_file)["error"].ToObject());
 		return 1;
 	}
 	if(!checkJsonData(jsonData))
@@ -199,8 +239,7 @@ long MainWindow::buildButtonClick(FXObject *, FXSelector, void *)
 	{
 		project = ProjectBuilder::getProjectFromJson(
 			jsonData["project"].ToObject(),
-			jsonData["build"].ToObject(),
-			jsonData["run"].ToObject());
+			jsonData["runCommands"].ToArray());
 	}
 	catch (const std::runtime_error& e)
 	{
@@ -209,8 +248,8 @@ long MainWindow::buildButtonClick(FXObject *, FXSelector, void *)
 	}
 	mainSwitcher->handle(this,FXSEL(SEL_COMMAND,FXSwitcher::ID_OPEN_THIRD),NULL);
     exeThread = new ExeThread();
-	std::string engage;
-	engage = ProjectBuilder::buildProject(project);
+	std::string engage = "";
+	engage = ProjectBuilder::buildCommand(&project->runCommands[0], project->projectSettings);
 	engage += " 2>&1";
     exeThread->engage = engage;
     exeThread->start();

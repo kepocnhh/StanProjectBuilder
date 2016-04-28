@@ -1,19 +1,21 @@
+#include <stdio.h>
+#include <fstream>
 #include "json/json.h"
+#include "../../core/project/Module.h"
+#include "../../core/project/command/CommandGroup.h"
+#include "../../core/project/command/CommandModule.h"
 #include "../../core/project/Project.h"
+#include "../../helpers/project/TypesHelper.h"
 
 class ProjectBuilder
 {
 private:
     static Project* getProjectFromJson(json::Object projectJson);
-    static Run* getRunFromJson(json::Object runJson);
-    static Build* getBuildFromJson(json::Object buildJson);
-	static Build* getMainlineFromJson(Build* build, json::Object mainlineJson);
-	static Module* getModulesFromJson(json::Array modulesJson);
-	static Module getModuleFromJson(json::Object moduleJson);
+	static Command* getCommandsFromJson(json::Array runCommandsJson);
+	
 public:
-    static Project* getProjectFromJson(json::Object projectJson, json::Object buildJson, json::Object runJson);
-	static std::string buildProject(Project*);
-	static std::string runProject(Project*);
+    static Project* getProjectFromJson(json::Object projectJson, json::Array runCommands);
+	static std::string buildCommand(Command* command, Project::settings projectSettings);
 
 protected:
 };

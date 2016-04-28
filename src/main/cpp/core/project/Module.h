@@ -1,3 +1,6 @@
+#ifndef _Module_H
+#define _Module_H
+
 #include <string>
 
 class Module
@@ -12,3 +15,5 @@ public:
 
 protected:
 };
+
+#endif // _Module_H
