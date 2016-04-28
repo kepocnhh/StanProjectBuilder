@@ -61,34 +61,43 @@ void MainWindow::switchToBuild(json::Object projectJson, json::Array runCommands
 	FXSelector updatemessage=FXSEL(SEL_COMMAND,FXSwitcher::ID_OPEN_SECOND);
 	mainSwitcher->handle(this,updatemessage,NULL);
 }
-std::string getModulesString(CommandModule* command, Project::settings projectSettings)
+Module getModuleFromJson2(json::Object moduleJson)
+{
+	Module module = Module();
+	module.name = moduleJson["name"].ToString();
+	module.active = moduleJson["active"].ToBool();
+	module.absolute = moduleJson["absolute"].ToBool();
+	json::Array lines = moduleJson["lines"].ToArray();
+	module.linesSize = lines.size();
+	module.lines = new std::string[lines.size()];
+	for(int i = 0; i < lines.size(); i++)
+	{
+		module.lines[i] = lines[i].ToString();
+	}
+	return module;
+}
+Module* getModulesFromJson2(json::Array modulesJson)
+{
+	Module* modules = new Module[modulesJson.size()];
+	for(int i = 0; i < modulesJson.size(); i++)
+	{
+		modules[i] = getModuleFromJson2(modulesJson[i]);
+	}
+	return modules;
+}
+std::string getModulesString(CommandModule* command)
 {
 	std::string engage = "";
-	if(command->modulesSize == 8)
+	if(!command->modules[0].active)
 	{
-		engage += "8";
+		engage += "!active";
 	}
-	else if(command->modulesSize > 8)
+	if(command->modulesSize > 8)
 	{
 		engage += ">8";
 	}
-	else if(command->modulesSize < 8)
-	{
-		engage += "<8";
-	}
-		engage += command->name;
-	if(command->modules[0].active)
-	{
-		engage += "active";
-	}
-	else
-	{
-		engage += "!!!active";
-	}
-	//MODULES
 	for(int i=0; i < command->modulesSize; i++)
 	{
-		/*
 		if(!command->modules[i].active)
 		{
 			continue;
@@ -96,20 +105,46 @@ std::string getModulesString(CommandModule* command, Project::settings projectSe
 		std::string prefix = "";
 		if(!command->modules[i].absolute)
 		{
-			prefix = projectSettings.rootDir + "/";
+			prefix = "rootDir/";
 		}
 		for(int j=0; j < command->modules[i].linesSize; j++)
 		{
 			engage += " " + prefix + command->modules[i].lines[j];
 		}
-		*/
-	}
-	//EXECUTE_FILE_NAME
-	if(projectSettings.type == TypesHelper::PROJECT_TYPE_CPP)
-	{
-		engage += " -o " + projectSettings.rootDir + "/" + projectSettings.name;
 	}
 	return engage;
+}
+std::string getModulesString(json::Object runCommandJson)
+{
+	CommandModule *command = new CommandModule(runCommandJson["name"].ToString(),
+		runCommandJson["type"].ToInt());
+	//
+	json::Array modulesJson = runCommandJson["modules"].ToArray();
+	command->modulesSize = modulesJson.size();
+	command->modules = getModulesFromJson2(modulesJson);
+	//
+	Command *commandParent = command;
+	CommandModule *commandNew = (CommandModule*) commandParent;
+	/*
+	std::string engage = "";
+	for(int i=0; i < command.modulesSize; i++)
+	{
+		if(!command.modules[i].active)
+		{
+			continue;
+		}
+		std::string prefix = "";
+		if(!command.modules[i].absolute)
+		{
+			prefix = "rootDir/";
+		}
+		for(int j=0; j < command.modules[i].linesSize; j++)
+		{
+			engage += "\n" + prefix + command.modules[i].lines[j];
+		}
+	}
+	*/
+	return getModulesString(commandNew);
 }
 void MainWindow::openFileChooseDialog()
 {
@@ -139,7 +174,8 @@ void MainWindow::openFileChooseDialog()
 			jsonData["runCommands"].ToArray());
 	}
 	//
-	FXMessageBox::error(this, MBOX_OK, "modules", getModulesString(((CommandModule *)&project->runCommands[0]), project->projectSettings).c_str());
+	FXMessageBox::error(this, MBOX_OK, "modules", getModulesString(jsonData["runCommands"].ToArray()[0]).c_str());
+	//FXMessageBox::error(this, MBOX_OK, "modules", getModulesString((CommandModule *)&project->runCommands[0]).c_str());
 }
 bool MainWindow::checkJsonData(json::Object jsonData)
 {
