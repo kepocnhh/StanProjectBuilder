@@ -11,7 +11,7 @@ class ProjectBuilder
 {
 private:
     static Project* getProjectFromJson(json::Object projectJson);
-	static Command* getCommandsFromJson(json::Array runCommandsJson);
+	static Command** getCommandsFromJson(json::Array runCommandsJson);
 	
 public:
     static Project* getProjectFromJson(json::Object projectJson, json::Array runCommands);

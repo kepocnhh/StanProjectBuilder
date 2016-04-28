@@ -109,22 +109,27 @@ std::string getModulesString(CommandModule* command)
 		}
 		for(int j=0; j < command->modules[i].linesSize; j++)
 		{
-			engage += " " + prefix + command->modules[i].lines[j];
+			engage += "\n" + prefix + command->modules[i].lines[j];
 		}
 	}
 	return engage;
 }
 std::string getModulesString(json::Object runCommandJson)
 {
-	CommandModule *command = new CommandModule(runCommandJson["name"].ToString(),
+	CommandModule* command = new CommandModule(runCommandJson["name"].ToString(),
 		runCommandJson["type"].ToInt());
 	//
 	json::Array modulesJson = runCommandJson["modules"].ToArray();
 	command->modulesSize = modulesJson.size();
 	command->modules = getModulesFromJson2(modulesJson);
 	//
-	Command *commandParent = command;
-	CommandModule *commandNew = (CommandModule*) commandParent;
+	Command** runCommands = new Command*[2];
+	runCommands[0] = command;
+	CommandModule *commandNew = (CommandModule*) runCommands[0];
+	//
+	//Command *commandParent = command;
+	//CommandModule *commandNew = (CommandModule*) commandParent;
+	//
 	/*
 	std::string engage = "";
 	for(int i=0; i < command.modulesSize; i++)
@@ -174,7 +179,7 @@ void MainWindow::openFileChooseDialog()
 			jsonData["runCommands"].ToArray());
 	}
 	//
-	FXMessageBox::error(this, MBOX_OK, "modules", getModulesString(jsonData["runCommands"].ToArray()[0]).c_str());
+	//FXMessageBox::error(this, MBOX_OK, "modules", getModulesString(jsonData["runCommands"].ToArray()[0]).c_str());
 	//FXMessageBox::error(this, MBOX_OK, "modules", getModulesString((CommandModule *)&project->runCommands[0]).c_str());
 }
 bool MainWindow::checkJsonData(json::Object jsonData)
@@ -285,7 +290,7 @@ long MainWindow::buildButtonClick(FXObject *, FXSelector, void *)
 	mainSwitcher->handle(this,FXSEL(SEL_COMMAND,FXSwitcher::ID_OPEN_THIRD),NULL);
     exeThread = new ExeThread();
 	std::string engage = "";
-	engage = ProjectBuilder::buildCommand(&project->runCommands[0], project->projectSettings);
+	engage = ProjectBuilder::buildCommand(project->runCommands[0], project->projectSettings);
 	engage += " 2>&1";
     exeThread->engage = engage;
     exeThread->start();

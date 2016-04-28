@@ -33,7 +33,7 @@ Module* getModulesFromJson(json::Array modulesJson)
 	}
 	return modules;
 }
-Command getCommandModuleFromJson(json::Object runCommandJson)
+Command getCommandModuleFromJsonOld(json::Object runCommandJson)
 {
 	CommandModule command = CommandModule(runCommandJson["name"].ToString(),
 		runCommandJson["type"].ToInt());
@@ -60,15 +60,42 @@ Command getCommandModuleFromJson(json::Object runCommandJson)
 	//
 	return command;
 }
-Command getCommandGroupFromJson(json::Object runCommandJson)
+Command* getCommandModuleFromJson(json::Object runCommandJson)
 {
-	CommandGroup command = CommandGroup(runCommandJson["name"].ToString(),
+	CommandModule *command = new CommandModule(runCommandJson["name"].ToString(),
 		runCommandJson["type"].ToInt());
-	json::Array commands = runCommandJson["commands"].ToArray();
-	command.commandsSize = commands.size();
+	//
+	json::Array pre = runCommandJson["pre"].ToArray();
+	command->preSize = pre.size();
+	command->pre = new std::string[pre.size()];
+	for(int i = 0; i < pre.size(); i++)
+	{
+		command->pre[i] = pre[i].ToString();
+	}
+	//
+	json::Array modulesJson = runCommandJson["modules"].ToArray();
+	command->modulesSize = modulesJson.size();
+	command->modules = getModulesFromJson(modulesJson);
+	//
+	json::Array post = runCommandJson["post"].ToArray();
+	command->postSize = post.size();
+	command->post = new std::string[post.size()];
+	for(int i = 0; i < post.size(); i++)
+	{
+		command->post[i] = post[i].ToString();
+	}
+	//
 	return command;
 }
-Command getCommandFromJson(json::Object runCommandJson)
+Command* getCommandGroupFromJson(json::Object runCommandJson)
+{
+	CommandGroup* command = new CommandGroup(runCommandJson["name"].ToString(),
+		runCommandJson["type"].ToInt());
+	json::Array commands = runCommandJson["commands"].ToArray();
+	command->commandsSize = commands.size();
+	return command;
+}
+Command* getCommandFromJson(json::Object runCommandJson)
 {
 	if(runCommandJson["type"].ToInt() == TypesHelper::COMMAND_TYPE_GROUP)
 	{
@@ -87,9 +114,9 @@ Project* ProjectBuilder::getProjectFromJson(json::Object projectJson)
 	project->projectSettings.type = projectJson["type"].ToInt();
 	return project;
 }
-Command* ProjectBuilder::getCommandsFromJson(json::Array runCommandsJson)
+Command** ProjectBuilder::getCommandsFromJson(json::Array runCommandsJson)
 {
-	Command* runCommands = new Command[runCommandsJson.size()];
+	Command** runCommands = new Command*[runCommandsJson.size()];
 	for(int i = 0; i < runCommandsJson.size(); i++)
 	{
 		runCommands[i] = getCommandFromJson(runCommandsJson[i]);
